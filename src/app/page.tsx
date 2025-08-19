@@ -1,5 +1,5 @@
 
-import { Container } from '@mui/material';
+import { Box, Container } from '@mui/material';
 import Header from './_components/Header';
 import PopularSpot from './_components/PopularSpot';
 import SearchForm from './_components/SearchForm';
@@ -13,12 +13,13 @@ export default function Home() {
   };
 
   return (
-    <>
+    <Box bgcolor='#b0b0b0ff'>
       <Header />
       <Container maxWidth="md">
         <PopularSpot spot={dummySpot} />
         <SearchForm />
       </Container>
-    </>
+    </Box>
   );
 }
+// https://umsmzcsbtrdspjobfjjm.supabase.co

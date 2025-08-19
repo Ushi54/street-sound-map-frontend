@@ -14,3 +14,9 @@
 - 地図表示（Google Maps）
 - 場所の登録（緯度経度＋メモ）
 - スポット詳細表示
+
+### 使用スタック
+- Next.js
+- Spring Boot
+- Supabase
+-
