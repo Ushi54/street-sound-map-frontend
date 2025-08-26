@@ -7,7 +7,7 @@ import { AccountCircle } from '@mui/icons-material';
 export default function Header() {
   // ログイン状態フラグ
   const [loginFlg, setLoginFlg] = useState<boolean>(false)
-  
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static" sx={{ bgcolor: '#272727' }}>
