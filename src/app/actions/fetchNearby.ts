@@ -1,3 +1,10 @@
+/**
+ * 
+ * @param lat 
+ * @param lon 
+ * @param radiusKm 
+ * @returns 
+ */
 export async function fetchNearby(lat: number, lon: number, radiusKm = 5) {
   const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/places/nearby?lat=${lat}&lon=${lon}&radiusKm=${radiusKm}`
   
