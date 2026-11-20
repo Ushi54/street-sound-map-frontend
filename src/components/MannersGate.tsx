@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { MANNERS, MANNERS_VERSION } from "@/lib/manners";
 
@@ -7,6 +8,8 @@ const KEY = "ssm-manners-agreed";
 
 // 初回のマナー画面（S1）。「守ります」を押すまで閉じない。Esc でも閉じない
 export default function MannersGate() {
+  // 紹介ページ（/）では出さない。LP にもマナーを大きく載せていて、地図を開いた時に必ずこの画面を通るため（2026-11-21 社長が決定）
+  const onLanding = usePathname() === "/";
   // null = まだ確かめていない（この間は画面全体をふさぎ、地図を触れないようにする）
   const [agreed, setAgreed] = useState<boolean | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -31,10 +34,11 @@ export default function MannersGate() {
   }, []);
 
   useEffect(() => {
+    if (onLanding) return;
     const d = dialogRef.current;
     if (agreed === false && d && !d.open) d.showModal();
     if (agreed === false) checkRead();
-  }, [agreed]);
+  }, [agreed, onLanding]);
 
   // Esc などで閉じられても、「守ります」を押すまでは開き直す
   // （Chrome は2回目以降の Esc の preventDefault を無視することがあるため）
@@ -51,7 +55,7 @@ export default function MannersGate() {
     setAgreed(true);
   }
 
-  if (agreed === true) return null;
+  if (onLanding || agreed === true) return null;
   if (agreed === null) return <div className="fixed inset-0 z-50 bg-cream" aria-hidden />;
 
   return (
