@@ -1,42 +1,35 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* デザインA（オーガニック）の7色＋白・文字色。design_system スキルの決まり */
+@theme {
+  --color-green-dark: #6f9b88;
+  --color-green: #a3c2ad;
+  --color-green-cream: #dce5d2;
+  --color-cream: #f5efe1;
+  --color-beige: #efe2cc;
+  --color-sand: #e0c6a5;
+  --color-sand-dark: #c9a47b;
+  --color-ink: #2d241e;
+  --font-sans: var(--font-zen), "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
 }
 
 html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
+  background: var(--color-cream);
+  color: var(--color-ink);
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* 初回のマナー画面（<dialog>）の後ろを暗くする */
+dialog::backdrop {
+  background: rgb(45 36 30 / 0.55);
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
   }
 }
