@@ -2,19 +2,24 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CurrentUser } from "@/lib/supabase/server";
 import type { Area, Place } from "@/lib/types";
 import AccountMenu from "./AccountMenu";
 import MannersBanner from "./MannersBanner";
 import PlaceDetail from "./PlaceDetail";
 import SiteFooterLinks from "./SiteFooterLinks";
+import Spinner from "./Spinner";
 import Toast from "./Toast";
 
 // 地図はブラウザでしか動かないので、サーバーでは描かない
 const AreaMap = dynamic(() => import("./AreaMap"), {
   ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse bg-green-cream" />,
+  loading: () => (
+    <div className="grid h-full w-full place-items-center bg-green-cream">
+      <Spinner label="地図を読み込み中" />
+    </div>
+  ),
 });
 
 const DONE_MESSAGE: Record<string, string> = { posted: "投稿しました", updated: "保存しました" };
@@ -33,6 +38,13 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
   const [toast, setToast] = useState<string | null>(done ? (DONE_MESSAGE[done] ?? null) : null);
   const clearToast = useCallback(() => setToast(null), []);
   const selected = places.find((p) => p.id === selectedId) ?? null;
+  // 別の場所を開いたら、詳細を一番上から見せる（前の場所のスクロール位置を引き継がない）
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
+  const panelScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (sheetScrollRef.current) sheetScrollRef.current.scrollTop = 0;
+    if (panelScrollRef.current) panelScrollRef.current.scrollTop = 0;
+  }, [selectedId]);
 
   // 選んだ場所を URL（?place=〜）にも残す。共有・再読み込みしても同じ場所が開く
   const setSelectedId = useCallback(
@@ -114,14 +126,15 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
         <aside className="hidden w-[340px] shrink-0 overflow-y-auto bg-cream p-5 lg:block">{list}</aside>
 
         <main className="relative min-w-0 flex-1">
-          <AreaMap area={area} places={places} selectedId={selectedId} onSelect={select} />
+          {/* スマホ：地図をタップしたら一覧（詳細）を下にしまう。選んだ場所はそのまま */}
+          <AreaMap area={area} places={places} selectedId={selectedId} onSelect={select} onBackgroundClick={() => setSheetOpen(false)} />
 
           {/* スマホ・タブレット縦：投稿ボタンはシートの上に浮かせる */}
           {!sheetOpen && <div className="absolute right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-10 lg:hidden">{postButton}</div>}
 
           {/* PC・タブレット横：右に詳細（サイドパネル） */}
           {selected && (
-            <div className="absolute inset-y-4 right-4 hidden w-[380px] overflow-y-auto rounded-3xl bg-white p-6 shadow-[0_4px_24px_rgb(45_36_30/0.12)] lg:block">
+            <div ref={panelScrollRef} className="absolute inset-y-4 right-4 hidden w-[380px] overflow-y-auto overflow-x-hidden rounded-3xl bg-white p-6 shadow-[0_4px_24px_rgb(45_36_30/0.12)] lg:block">
               <PlaceDetail key={selected.id} place={selected} user={user} onClose={closeDetail} onToast={setToast} />
             </div>
           )}
@@ -136,16 +149,26 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
         >
           <button
             type="button"
-            onClick={() => (selected ? setSelectedId(null) : setSheetOpen((v) => !v))}
+            onClick={() => {
+              if (!sheetOpen) setSheetOpen(true); // しまってある時は、まず開く（選んだ場所があれば詳細のまま）
+              else if (selected) setSelectedId(null);
+              else setSheetOpen(false);
+            }}
             className={`flex h-[4.5rem] shrink-0 flex-col items-center justify-center gap-1.5 ${sheetOpen ? "" : "touch-none"}`}
             aria-expanded={sheetOpen}
           >
             <span className="h-1.5 w-12 rounded-full bg-sand-dark/60" />
             <span className="text-sm font-bold">
-              {selected ? "一覧にもどる" : sheetOpen ? "地図を見る" : `${area.name}の場所 ${places.length}件`}
+              {!sheetOpen
+                ? selected
+                  ? `${selected.name}を見る`
+                  : `${area.name}の場所 ${places.length}件`
+                : selected
+                  ? "一覧にもどる"
+                  : "地図を見る"}
             </span>
           </button>
-          <div inert={!sheetOpen} className="overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <div ref={sheetScrollRef} inert={!sheetOpen} className="min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
             {selected ? <PlaceDetail key={selected.id} place={selected} user={user} onClose={closeDetail} onToast={setToast} /> : list}
           </div>
         </section>

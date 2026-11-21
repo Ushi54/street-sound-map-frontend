@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import type { Area, Place } from "@/lib/types";
+import Spinner from "./Spinner";
 
 // 無料の地図（OpenFreeMap。カード登録・キー不要）。要件定義 Q1
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
@@ -13,18 +14,22 @@ type Props = {
   places: Place[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onBackgroundClick?: () => void; // ピン以外の所（地図そのもの）をタップした時
 };
 
-export default function AreaMap({ area, places, selectedId, onSelect }: Props) {
+export default function AreaMap({ area, places, selectedId, onSelect, onBackgroundClick }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onBackgroundRef = useRef(onBackgroundClick);
+  onBackgroundRef.current = onBackgroundClick;
   const placesRef = useRef(places);
   placesRef.current = places;
   const selectedRef = useRef(selectedId);
   selectedRef.current = selectedId;
   const [lng, lat] = area.center;
+  const [loading, setLoading] = useState(true); // 地図の読み込みが終わるまでスピナー
 
   // 地図を1回だけ作る
   useEffect(() => {
@@ -43,6 +48,7 @@ export default function AreaMap({ area, places, selectedId, onSelect }: Props) {
     mapRef.current = map;
 
     map.on("load", () => {
+      setLoading(false);
       // 地図の文字を日本語にする（日本語の名前がない所は元の名前）
       for (const layer of map.getStyle().layers) {
         if (layer.type !== "symbol") continue;
@@ -89,6 +95,11 @@ export default function AreaMap({ area, places, selectedId, onSelect }: Props) {
       map.on("click", "pins", (e) => {
         const id = e.features?.[0]?.properties?.id;
         if (typeof id === "string") onSelectRef.current(id);
+      });
+      // ピンやまとまり以外をタップした時（ドラッグで動かした時は click にならない）
+      map.on("click", (e) => {
+        const hit = map.queryRenderedFeatures(e.point, { layers: ["pins", "clusters"] });
+        if (hit.length === 0) onBackgroundRef.current?.();
       });
       map.on("click", "clusters", async (e) => {
         const f = e.features?.[0];
@@ -138,7 +149,16 @@ export default function AreaMap({ area, places, selectedId, onSelect }: Props) {
     if (p) map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 13), padding: detailPadding(map) });
   }, [selectedId]);
 
-  return <div ref={box} className="h-full w-full" aria-label={`${area.name}の地図`} />;
+  return (
+    <div className="relative h-full w-full">
+      <div ref={box} className="h-full w-full" aria-label={`${area.name}の地図`} />
+      {loading && (
+        <div className="absolute inset-0 grid place-items-center bg-cream/80">
+          <Spinner label="地図を読み込み中" />
+        </div>
+      )}
+    </div>
+  );
 }
 
 // 詳細が重なる分だけ余白をとり、選んだピンが見える所に来るようにする

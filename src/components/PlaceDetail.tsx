@@ -45,9 +45,9 @@ export default function PlaceDetail({ place, user, onClose, onToast }: Props) {
   }
 
   return (
-    <article className="space-y-5">
+    <article className="min-w-0 space-y-5">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-xl font-bold leading-snug">{place.name}</h2>
+        <h2 className="min-w-0 text-xl font-bold leading-snug [overflow-wrap:anywhere]">{place.name}</h2>
         <button type="button" onClick={onClose} aria-label="閉じる" className="grid size-10 shrink-0 place-items-center rounded-full bg-beige text-lg">
           ✕
         </button>
@@ -64,7 +64,7 @@ export default function PlaceDetail({ place, user, onClose, onToast }: Props) {
 
       <section className="rounded-2xl bg-sand px-4 py-4" aria-label="この場所の条件">
         <h3 className="font-bold">この場所の条件</h3>
-        <dl className="mt-2 grid grid-cols-[6.5em_1fr] gap-x-2 gap-y-1.5 text-sm">
+        <dl className="mt-2 grid grid-cols-[6.5em_minmax(0,1fr)] gap-x-2 [overflow-wrap:anywhere] gap-y-1.5 text-sm">
           <dt className="font-bold">根拠</dt>
           <dd>{BASIS_LABEL[place.basis]}</dd>
           <dt className="font-bold">時間帯</dt>
@@ -77,7 +77,7 @@ export default function PlaceDetail({ place, user, onClose, onToast }: Props) {
         <p className="mt-3 border-t border-sand-dark/40 pt-2 text-sm">8時〜20時だけ。注意されたら、すぐにやめてください。</p>
       </section>
 
-      {place.description && <p className="whitespace-pre-wrap leading-relaxed">{place.description}</p>}
+      {place.description && <p className="whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]">{linkify(place.description)}</p>}
       <p className="text-sm text-ink/70">
         投稿：{place.authorName}・{place.createdAt}
       </p>
@@ -126,5 +126,19 @@ export default function PlaceDetail({ place, user, onClose, onToast }: Props) {
           </div>
         ))}
     </article>
+  );
+}
+
+// 説明の中の URL（http/https だけ）をリンクにする。出典などを押して開けるように
+const URL_RE = /(https?:\/\/[^\s<>"'（）「」、。]+)/g;
+function linkify(text: string) {
+  return text.split(URL_RE).map((part, i) =>
+    i % 2 === 1 ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer nofollow ugc" className="text-green-dark underline">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
   );
 }

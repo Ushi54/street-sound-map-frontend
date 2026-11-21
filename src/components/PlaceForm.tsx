@@ -8,9 +8,14 @@ import { browserClient } from "@/lib/supabase/browser";
 import { MANNERS } from "@/lib/manners";
 import { BASIS_LABEL, INSTRUMENTS, type Area, type Basis, type Place } from "@/lib/types";
 
+import Spinner from "./Spinner";
 const PickMap = dynamic(() => import("./PickMap"), {
   ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse bg-green-cream" />,
+  loading: () => (
+    <div className="grid h-full w-full place-items-center bg-green-cream">
+      <Spinner label="地図を読み込み中" />
+    </div>
+  ),
 });
 
 const BASIS_HINT: Record<Basis, string> = {
