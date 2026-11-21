@@ -99,7 +99,7 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
   );
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <header className="flex items-center justify-between gap-3 bg-white px-4 py-2.5">
         <Link href="/" className="font-bold">
           Street Sound Map <span className="font-normal text-ink/70">／ {area.name}</span>
@@ -108,7 +108,8 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
       </header>
       <MannersBanner />
 
-      <div className="relative flex min-h-0 flex-1">
+      {/* overflow-hidden：閉じたシートの見えていない部分で、画面ごと下へスクロールできてしまうのを防ぐ */}
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* PC・タブレット横：左に一覧 */}
         <aside className="hidden w-[340px] shrink-0 overflow-y-auto bg-cream p-5 lg:block">{list}</aside>
 
@@ -136,7 +137,7 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
           <button
             type="button"
             onClick={() => (selected ? setSelectedId(null) : setSheetOpen((v) => !v))}
-            className="flex h-[4.5rem] shrink-0 flex-col items-center justify-center gap-1.5"
+            className={`flex h-[4.5rem] shrink-0 flex-col items-center justify-center gap-1.5 ${sheetOpen ? "" : "touch-none"}`}
             aria-expanded={sheetOpen}
           >
             <span className="h-1.5 w-12 rounded-full bg-sand-dark/60" />
@@ -144,7 +145,7 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
               {selected ? "一覧にもどる" : sheetOpen ? "地図を見る" : `${area.name}の場所 ${places.length}件`}
             </span>
           </button>
-          <div inert={!sheetOpen} className="overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <div inert={!sheetOpen} className="overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
             {selected ? <PlaceDetail key={selected.id} place={selected} user={user} onClose={closeDetail} onToast={setToast} /> : list}
           </div>
         </section>
