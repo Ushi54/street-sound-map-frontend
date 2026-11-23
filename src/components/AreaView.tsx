@@ -60,6 +60,61 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
     if (done) window.history.replaceState(null, "", initialPlaceId ? `/${area.slug}?place=${encodeURIComponent(initialPlaceId)}` : `/${area.slug}`);
   }, [done, initialPlaceId, area.slug]);
 
+  // ── シートを指で引き上げる・引き下げる（スワイプ） ──
+  const sheetRef = useRef<HTMLElement>(null);
+  const handleRef = useRef<HTMLButtonElement>(null);
+  const safeRef = useRef<HTMLSpanElement>(null);
+  const drag = useRef<{ startY: number; startOffset: number; closed: number; moved: boolean; lastY: number; lastT: number; v: number } | null>(null);
+  const suppressClick = useRef(false);
+  const [dragOffset, setDragOffset] = useState<number | null>(null); // 指で動かしている間の位置（px。0 = 開いた状態）
+
+  // 閉じた時に、つまみ（4.5rem）だけ見える位置
+  function closedOffset() {
+    const sheet = sheetRef.current?.offsetHeight ?? 0;
+    const handle = handleRef.current?.offsetHeight ?? 72;
+    const safe = safeRef.current?.offsetHeight ?? 0;
+    return Math.max(0, sheet - handle - safe);
+  }
+  function onHandleDown(e: React.PointerEvent<HTMLButtonElement>) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    suppressClick.current = false; // 指のスワイプの後は click が来ないことがあるので、押すたびに戻す
+    const closed = closedOffset();
+    drag.current = { startY: e.clientY, startOffset: sheetOpen ? 0 : closed, closed, moved: false, lastY: e.clientY, lastT: e.timeStamp, v: 0 };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onHandleMove(e: React.PointerEvent<HTMLButtonElement>) {
+    const d = drag.current;
+    if (!d) return;
+    const dy = e.clientY - d.startY;
+    if (!d.moved && Math.abs(dy) < 6) return; // 小さい動きはタップとして扱う
+    d.moved = true;
+    const dt = e.timeStamp - d.lastT;
+    if (dt > 0) d.v = (e.clientY - d.lastY) / dt; // 速さ（px/ms。下向きが＋）
+    d.lastY = e.clientY;
+    d.lastT = e.timeStamp;
+    setDragOffset(Math.min(d.closed, Math.max(0, d.startOffset + dy)));
+  }
+  function onHandleUp(e: React.PointerEvent<HTMLButtonElement>) {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || !d.moved) return; // タップ → いつもの onClick
+    suppressClick.current = true; // 指を離した時の click で、開け閉めが逆戻りしないように
+    const offset = Math.min(d.closed, Math.max(0, d.startOffset + (e.clientY - d.startY)));
+    // 速くはらったら、その向きへ。ゆっくりなら、半分より下で閉じる
+    const close = d.v > 0.4 ? true : d.v < -0.4 ? false : offset > d.closed / 2;
+    setDragOffset(null);
+    setSheetOpen(!close); // 下ろしても、選んだ場所はそのまま（地図をタップした時と同じ）
+  }
+  function onHandleClick() {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    if (!sheetOpen) setSheetOpen(true); // しまってある時は、まず開く（選んだ場所があれば詳細のまま）
+    else if (selected) setSelectedId(null);
+    else setSheetOpen(false);
+  }
+
   function select(id: string) {
     setSelectedId(id);
     setSheetOpen(true);
@@ -142,19 +197,27 @@ export default function AreaView({ area, places, user, initialPlaceId, done }: P
 
         {/* スマホ・タブレット縦：下から出る一覧／詳細（ボトムシート） */}
         <section
-          className={`absolute inset-x-0 bottom-0 z-10 flex max-h-[72dvh] flex-col rounded-t-3xl bg-cream shadow-[0_-4px_24px_rgb(45_36_30/0.15)] transition-transform duration-300 lg:hidden ${
-            sheetOpen ? "translate-y-0" : "translate-y-[calc(100%-4.5rem-env(safe-area-inset-bottom))]"
-          }`}
+          ref={sheetRef}
+          className={`absolute inset-x-0 bottom-0 z-10 flex max-h-[72dvh] flex-col rounded-t-3xl bg-cream shadow-[0_-4px_24px_rgb(45_36_30/0.15)] lg:hidden ${
+            dragOffset === null ? "transition-[translate] duration-300" : ""
+          } ${sheetOpen ? "translate-y-0" : "translate-y-[calc(100%-4.5rem-env(safe-area-inset-bottom))]"}`}
+          style={dragOffset === null ? undefined : { translate: `0 ${dragOffset}px` }}
           aria-label={selected ? "場所の詳細" : `${area.name}の場所の一覧`}
         >
+          <span ref={safeRef} aria-hidden className="pointer-events-none absolute h-[env(safe-area-inset-bottom)] w-0" />
+          {/* つまみ：タップで開け閉め。指で上下にスワイプしても、指についてきて開け閉めできる */}
           <button
+            ref={handleRef}
             type="button"
-            onClick={() => {
-              if (!sheetOpen) setSheetOpen(true); // しまってある時は、まず開く（選んだ場所があれば詳細のまま）
-              else if (selected) setSelectedId(null);
-              else setSheetOpen(false);
+            onClick={onHandleClick}
+            onPointerDown={onHandleDown}
+            onPointerMove={onHandleMove}
+            onPointerUp={onHandleUp}
+            onPointerCancel={() => {
+              drag.current = null;
+              setDragOffset(null);
             }}
-            className={`flex h-[4.5rem] shrink-0 flex-col items-center justify-center gap-1.5 ${sheetOpen ? "" : "touch-none"}`}
+            className="flex h-[4.5rem] shrink-0 touch-none select-none flex-col items-center justify-center gap-1.5"
             aria-expanded={sheetOpen}
           >
             <span className="h-1.5 w-12 rounded-full bg-sand-dark/60" />
